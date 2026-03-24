@@ -1,0 +1,46 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body { height: 100%; background: #0a0a0f; color: #e8e8f0; }
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: #111118; }
+::-webkit-scrollbar-thumb { background: #32324a; border-radius: 2px; }
+
+.grid-bg {
+  background-image:
+    linear-gradient(rgba(0,255,136,.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,255,136,.03) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+.signal-glow { box-shadow: 0 0 20px rgba(0,255,136,.15), 0 0 40px rgba(0,255,136,.05); }
+.signal-glow-text { text-shadow: 0 0 20px rgba(0,255,136,.4); }
+
+.message-content h2 { font-size:1.05rem; font-weight:600; color:#00ff88; margin:1rem 0 .4rem; }
+.message-content h3 { font-size:.9rem; font-weight:600; color:#a0a0c0; margin:.75rem 0 .3rem; }
+.message-content p  { margin:.45rem 0; line-height:1.7; color:#c8c8d8; }
+.message-content ul, .message-content ol { margin:.45rem 0; padding-left:1.2rem; }
+.message-content li { margin:.25rem 0; line-height:1.6; color:#c8c8d8; }
+.message-content li::marker { color:#00ff88; }
+.message-content strong { color:#e8e8f0; font-weight:500; }
+.message-content code { background:#252533; color:#00ff88; padding:.1rem .3rem; border-radius:3px; font-size:.8rem; font-family:'JetBrains Mono',monospace; }
+.message-content table { width:100%; border-collapse:collapse; margin:.75rem 0; font-size:.82rem; }
+.message-content th { background:#1a1a24; color:#00ff88; padding:.45rem .7rem; text-align:left; font-size:.72rem; text-transform:uppercase; letter-spacing:.05em; }
+.message-content td { padding:.45rem .7rem; border-bottom:1px solid #1e1e2e; color:#c8c8d8; }
+
+.typing-dot { animation: blink 1.2s ease-in-out infinite; }
+.typing-dot:nth-child(2) { animation-delay:.2s; }
+.typing-dot:nth-child(3) { animation-delay:.4s; }
+@keyframes blink { 0%,60%,100%{opacity:.3;transform:translateY(0)} 30%{opacity:1;transform:translateY(-3px)} }
+
+/* Help chatbot content */
+.help-content strong { color: #e8e8f0; font-weight: 600; }
+.help-content ul { margin: 0.4rem 0; padding-left: 1rem; }
+.help-content li { margin: 0.2rem 0; color: #c8c8d8; list-style-type: disc; }
+.help-content li::marker { color: #00ff88; }
+.help-content br { display: block; content: ""; margin-top: 0.3rem; }
+.message-content h4 { font-size:.85rem; font-weight:600; color:#c8c8d8; margin:.6rem 0 .25rem; }
+.message-content a  { color:#00ff88; text-decoration:underline; }
+.message-content a:hover { opacity:0.8; }
