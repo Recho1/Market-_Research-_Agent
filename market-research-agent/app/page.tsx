@@ -6,6 +6,7 @@ import ModelSettingsPanel from "@/components/ModelSettingsPanel";
 import TokenUsageDisplay from "@/components/TokenUsageDisplay";
 import HelpChatbot from "@/components/HelpChatbot";
 import LoginScreen from "@/components/LoginScreen";
+import FeatureBadges from "@/components/FeatureBadges";
 import { exportChatToPdf } from "@/lib/exportPdf";
 import type {
   ChatMessage, ToolName, ModelSettings, SessionStats,
@@ -75,26 +76,13 @@ function saveChatToStorage(chat: SavedChat) {
   } catch { /* ignore */ }
 }
 
-// ── Icon Button ───────────────────────────────────────────────────────────────
-function IconBtn({ onClick, title, disabled, active, children, amber }: {
-  onClick: () => void; title: string; disabled?: boolean;
-  active?: boolean; children: React.ReactNode; amber?: boolean;
+function IconBtn({ onClick, title, disabled, children }: {
+  onClick: () => void; title: string; disabled?: boolean; children: React.ReactNode;
 }) {
   return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      title={title}
-      className={`relative group w-8 h-8 rounded-lg flex items-center justify-center transition-all disabled:opacity-30 disabled:cursor-not-allowed
-        ${active
-          ? amber
-            ? "bg-[#ffb700]/15 border border-[#ffb700]/30 text-[#ffb700]"
-            : "bg-[#00ff88]/10 border border-[#00ff88]/25 text-[#00ff88]"
-          : "border border-[#1e1e2e] text-[#505070] hover:border-[#00ff88]/20 hover:text-[#00ff88] hover:bg-[#00ff88]/5"
-        }`}
-    >
+    <button onClick={onClick} disabled={disabled} title={title}
+      className="relative group w-8 h-8 rounded-lg flex items-center justify-center transition-all disabled:opacity-30 disabled:cursor-not-allowed border border-[#1e1e2e] text-[#505070] hover:border-[#00ff88]/20 hover:text-[#00ff88] hover:bg-[#00ff88]/5">
       {children}
-      {/* Tooltip */}
       <span className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] font-mono text-[#e8e8f0] bg-[#1a1a24] border border-[#252533] rounded px-2 py-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-50">
         {title}
       </span>
@@ -259,7 +247,6 @@ export default function HomePage() {
     for (let i=index-1; i>=0; i--) { if (messages[i].role==="user") return messages[i].content; }
     return "";
   };
-
   const filteredChats = savedChats.filter(c =>
     !searchQuery ||
     c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -275,7 +262,6 @@ export default function HomePage() {
       {/* ── Sidebar ──────────────────────────────────────────────────────── */}
       <aside className={`flex-shrink-0 border-r border-[#1a1a24] flex flex-col bg-[#0d0d14] transition-all duration-300 relative ${collapsed?"w-14":"w-60"}`}>
 
-        {/* Logo + collapse */}
         <div className="flex items-center justify-between px-3 py-3 border-b border-[#1a1a24]">
           {!collapsed && (
             <div className="flex items-center gap-2 min-w-0">
@@ -294,22 +280,20 @@ export default function HomePage() {
             </div>
           )}
           {!collapsed && (
-            <button onClick={() => setCollapsed(true)} title="Collapse sidebar"
+            <button onClick={() => setCollapsed(true)} title="Collapse"
               className="w-6 h-6 rounded-md flex items-center justify-center text-[#404060] hover:text-[#e8e8f0] hover:bg-[#1a1a24] transition-all">
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M15 18l-6-6 6-6"/></svg>
             </button>
           )}
         </div>
 
-        {/* Expand pill */}
         {collapsed && (
-          <button onClick={() => setCollapsed(false)} title="Expand sidebar"
+          <button onClick={() => setCollapsed(false)} title="Expand"
             className="absolute -right-3 top-3.5 w-6 h-6 rounded-full border border-[#1a1a24] bg-[#0d0d14] flex items-center justify-center text-[#404060] hover:text-[#00ff88] z-20 shadow-lg transition-all">
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
           </button>
         )}
 
-        {/* New Chat + Search actions */}
         <div className={`flex items-center border-b border-[#1a1a24] ${collapsed?"flex-col py-2 gap-1 px-2":"gap-1 px-3 py-2"}`}>
           <button onClick={handleNewChat} title="New Chat"
             className={`flex items-center gap-2 rounded-lg border border-transparent text-[#505070] hover:text-[#00ff88] hover:bg-[#00ff88]/5 hover:border-[#00ff88]/20 transition-all ${collapsed?"w-9 h-9 justify-center":"flex-1 px-2.5 py-2"}`}>
@@ -327,7 +311,6 @@ export default function HomePage() {
           </button>
         </div>
 
-        {/* Search panel */}
         {showSearch && !collapsed && (
           <div className="border-b border-[#1a1a24] flex flex-col" style={{maxHeight:"260px"}}>
             <div className="px-3 py-2">
@@ -363,7 +346,6 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* User badge */}
         {!collapsed && !showSearch && (
           <div className="px-3 py-2 border-b border-[#1a1a24]">
             <div className="flex items-center justify-between bg-[#111118] border border-[#1e1e2e] rounded-lg px-2 py-1.5">
@@ -388,6 +370,7 @@ export default function HomePage() {
             </div>
           </div>
         )}
+
         {collapsed && (
           <div className="flex flex-col items-center py-2 border-b border-[#1a1a24]">
             <div className="w-7 h-7 rounded-md bg-[#00ff88]/15 border border-[#00ff88]/25 flex items-center justify-center" title={profile.name}>
@@ -396,7 +379,6 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* Tabs */}
         <nav className="flex flex-col py-2 gap-0.5 border-b border-[#1a1a24] px-2">
           {TABS.map(t => (
             <button key={t.id} onClick={()=>{ setTab(t.id); setShowSearch(false); if(collapsed) setCollapsed(false); }} title={t.title}
@@ -409,7 +391,6 @@ export default function HomePage() {
           ))}
         </nav>
 
-        {/* Tab content */}
         {!collapsed && !showSearch && (
           <div className="flex-1 overflow-y-auto p-3">
             {tab==="tools"    && <ToolPanel enabledTools={enabledTools} onToggle={toggleTool}/>}
@@ -449,7 +430,6 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* Footer */}
         <div className={`border-t border-[#1a1a24] ${collapsed?"p-2":"p-3"}`}>
           {collapsed ? (
             <button onClick={handleLogout} title="Sign out" className="w-9 h-9 mx-auto flex items-center justify-center rounded-lg text-[#404060] hover:text-[#ff6b6b] hover:bg-[#1a1a24] transition-all">
@@ -471,9 +451,8 @@ export default function HomePage() {
       {/* ── Main ─────────────────────────────────────────────────────────── */}
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
 
-        {/* Top action bar — icons only */}
+        {/* Top bar */}
         <div className="flex items-center justify-between px-5 py-2.5 border-b border-[#1a1a24] bg-[#0a0a0f]/90 backdrop-blur-sm flex-shrink-0">
-          {/* Left: session info */}
           <div className="flex items-center gap-2">
             <span className="w-1.5 h-1.5 rounded-full bg-[#00ff88] animate-pulse flex-shrink-0"/>
             <span className="text-[10px] font-mono text-[#404060]">
@@ -482,23 +461,14 @@ export default function HomePage() {
             {messages.length > 0 && (
               <>
                 <span className="text-[#1e1e2e]">|</span>
-                <span className="text-[10px] font-mono text-[#303050]">
-                  {messages.length} msg{messages.length!==1?"s":""}
-                </span>
+                <span className="text-[10px] font-mono text-[#303050]">{messages.length} msg{messages.length!==1?"s":""}</span>
               </>
             )}
           </div>
-
-          {/* Right: icon actions */}
           <div className="flex items-center gap-1.5">
-            {/* New chat */}
             <IconBtn onClick={handleNewChat} title="New Chat">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 5v14M5 12h14"/>
-              </svg>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14"/></svg>
             </IconBtn>
-
-            {/* Export PDF — only when there are messages */}
             {messages.length > 0 && (
               <IconBtn onClick={handleExportPdf} title="Export PDF" disabled={isExporting}>
                 {isExporting ? (
@@ -512,8 +482,6 @@ export default function HomePage() {
                 )}
               </IconBtn>
             )}
-
-            {/* Clear chat */}
             {messages.length > 0 && (
               <IconBtn onClick={()=>{setMessages([]);setStats(DEFAULT_STATS);setError(null);setCurrentChatId(generateId());}} title="Clear Chat">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -521,11 +489,7 @@ export default function HomePage() {
                 </svg>
               </IconBtn>
             )}
-
-            {/* Divider */}
             <div className="w-px h-4 bg-[#1e1e2e] mx-0.5"/>
-
-            {/* Model badge */}
             <span className="text-[9px] font-mono text-[#404060] bg-[#111118] border border-[#1e1e2e] rounded px-2 py-1">
               {settings.model.replace("gpt-","").replace("-turbo","-t")}
             </span>
@@ -546,19 +510,11 @@ export default function HomePage() {
                 <h1 className="text-xl font-bold text-[#e8e8f0] mb-2" style={{fontFamily:"Syne,sans-serif"}}>
                   Welcome back, {profile.name.split(" ")[0]}
                 </h1>
-                <p className="text-xs text-[#505070] max-w-xs mx-auto leading-relaxed">
+                <p className="text-xs text-[#505070] max-w-xs mx-auto leading-relaxed mb-5">
                   Specialized for <span className="text-[#00ff88]">{profile.industry}</span> research.
                 </p>
-                <div className="flex items-center justify-center gap-2 mt-4 flex-wrap">
-                  {[
-                    {label:"RAG",        color:"text-[#7c7cff] bg-[#7c7cff]/8 border-[#7c7cff]/20"},
-                    {label:"Multi-Agent",color:"text-[#ffb700] bg-[#ffb700]/8 border-[#ffb700]/20"},
-                    {label:"Memory",     color:"text-[#00ff88] bg-[#00ff88]/8 border-[#00ff88]/20"},
-                    {label:"PDF Export", color:"text-[#ff6b6b] bg-[#ff6b6b]/8 border-[#ff6b6b]/20"},
-                  ].map((b,i)=>(
-                    <span key={i} className={`text-[9px] font-mono border rounded-full px-2.5 py-1 ${b.color}`}>{b.label}</span>
-                  ))}
-                </div>
+                {/* Clickable feature badges */}
+                <FeatureBadges />
               </div>
               <div className="w-full max-w-2xl grid grid-cols-2 gap-2">
                 {STARTER_PROMPTS.map((p,i)=>(
@@ -594,7 +550,6 @@ export default function HomePage() {
           )}
         </div>
 
-        {/* Error */}
         {error && (
           <div className="px-6 pb-2 max-w-3xl mx-auto w-full">
             <div className="bg-[#ff6b6b]/6 border border-[#ff6b6b]/15 rounded-xl px-4 py-2.5 flex items-center justify-between">
@@ -604,7 +559,6 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* Input */}
         <div className="px-6 pb-5 pt-2 flex-shrink-0 max-w-3xl mx-auto w-full">
           <div className="flex gap-2 items-end bg-[#111118] border border-[#1e1e2e] rounded-2xl px-4 py-3 focus-within:border-[#00ff88]/20 transition-all duration-200">
             <textarea
@@ -624,14 +578,12 @@ export default function HomePage() {
               {charCount>1800 && (
                 <span className={`text-[9px] font-mono ${charCount>1950?"text-[#ff6b6b]":"text-[#505070]"}`}>{2000-charCount}</span>
               )}
-              {/* Deep Research */}
               <button onClick={()=>sendDeepResearch(input)} disabled={!input.trim()||isLoading} title="Deep Research — 4 agents in parallel"
                 className="w-8 h-8 rounded-xl bg-[#ffb700]/10 border border-[#ffb700]/20 flex items-center justify-center hover:bg-[#ffb700]/20 hover:border-[#ffb700]/40 transition-all disabled:opacity-25 disabled:cursor-not-allowed">
                 <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
                   <path d="M8 1L10 6H15L11 9.5L12.5 15L8 12L3.5 15L5 9.5L1 6H6L8 1Z" stroke="#ffb700" strokeWidth="1.2" strokeLinejoin="round"/>
                 </svg>
               </button>
-              {/* Send */}
               <button onClick={()=>send(input)} disabled={!input.trim()||isLoading} title="Send"
                 className="w-8 h-8 rounded-xl bg-[#00ff88]/10 border border-[#00ff88]/20 flex items-center justify-center hover:bg-[#00ff88]/20 hover:border-[#00ff88]/40 transition-all disabled:opacity-25 disabled:cursor-not-allowed">
                 {isLoading ? (
