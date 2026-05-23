@@ -4,6 +4,7 @@ import { StateGraph, END, START } from "@langchain/langgraph";
 import { ToolNode } from "@langchain/langgraph/prebuilt";
 import { Annotation } from "@langchain/langgraph";
 import type { BaseMessage } from "@langchain/core/messages";
+import { getMCPToolsAsLangChain } from "./mcpClient";
 import { TOOL_MAP, ALL_TOOLS } from "./tools";
 import { buildMemoryContext, addShortTermMemory, addLongTermMemory, getCachedResponse, setCachedResponse } from "./memory";
 import { retrieveRelevantContext, buildAgenticQuery } from "./rag";
@@ -57,7 +58,7 @@ async function withRetry<T>(
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try { return { result: await fn(), retries: attempt }; }
     catch (err) {
-      lastError = err instanceof Error ? err : new Error(String(err));
+      lastError  = err instanceof Error ? err : new Error(String(err));
       const retryable = lastError.message.includes("429") || lastError.message.includes("500") || lastError.message.includes("503") || lastError.message.includes("timeout");
       if (!retryable || attempt === maxRetries) break;
       await new Promise(r => setTimeout(r, delayMs * Math.pow(2, attempt)));
@@ -73,7 +74,8 @@ export async function runMarketResearchAgent(req: ChatRequest): Promise<ChatResp
 
   console.log(`\n${"=".repeat(60)}`);
   console.log(`[Agent] Starting: "${message.slice(0, 80)}"`);
-  console.log(`[Agent] Model: ${settings.model} | Personality: ${settings.personality} | Tools: ${enabledTools.join(", ")}`);
+  console.log(`[Agent] Model: ${settings.model} | Tools: ${enabledTools.join(", ")}`);
+  console.log(`[Agent] MCP: enabled`);
 
   // ── 1. Cache check ────────────────────────────────────────────────────────
   tracer.addStep("cache_check", "cache", message.slice(0, 80));
@@ -81,16 +83,7 @@ export async function runMarketResearchAgent(req: ChatRequest): Promise<ChatResp
   if (cached) {
     tracer.addStep("cache_hit", "cache", undefined, "Returned cached response");
     const obsData = buildObservabilityData(tracer, enabledTools, 0, [], 0, true, settings.model);
-    return {
-      content:         cached.response,
-      toolCalls:       cached.toolCalls,
-      tokenUsage:      cached.tokenUsage,
-      durationMs:      Date.now() - startTime,
-      cached:          true,
-      retries:         0,
-      ragSources:      [],
-      observabilityData: obsData,
-    };
+    return { content: cached.response, toolCalls: cached.toolCalls, tokenUsage: cached.tokenUsage, durationMs: Date.now() - startTime, cached: true, retries: 0, ragSources: [], observabilityData: obsData };
   }
 
   // ── 2. Agentic RAG ────────────────────────────────────────────────────────
@@ -98,7 +91,7 @@ export async function runMarketResearchAgent(req: ChatRequest): Promise<ChatResp
   const agenticQuery = buildAgenticQuery(message, history);
   tracer.addStep("rag_retrieval_start", "rag", agenticQuery);
   const { context: ragContext, sources: ragSources, scores: ragScores } = await retrieveRelevantContext(agenticQuery, 4);
-  tracer.addStep("rag_retrieval_done", "rag", undefined, `${ragSources.length} chunks, scores: [${ragScores.map(s=>s.toFixed(2)).join(", ")}]`);
+  tracer.addStep("rag_retrieval_done", "rag", undefined, `${ragSources.length} chunks, scores: [${ragScores.map(s => s.toFixed(2)).join(", ")}]`);
 
   // ── 3. Memory ─────────────────────────────────────────────────────────────
   const memoryContext = buildMemoryContext(sessionId, userId);
@@ -109,17 +102,35 @@ export async function runMarketResearchAgent(req: ChatRequest): Promise<ChatResp
   if (attachments && attachments.length > 0) {
     documentContext = "\n\nUPLOADED DOCUMENTS:\n" +
       attachments.map(a => `[Document: ${a.name}]\n${a.content.slice(0, 3000)}`).join("\n\n---\n\n");
-    tracer.addStep("document_load", "documents", `${attachments.length} files`, attachments.map(a=>a.name).join(", "));
+    tracer.addStep("document_load", "documents", `${attachments.length} files`, attachments.map(a => a.name).join(", "));
   }
 
   // ── 5. System prompt ──────────────────────────────────────────────────────
   const personality  = (settings.personality || "balanced") as keyof typeof PERSONALITY_PROMPTS;
   const systemPrompt = PERSONALITY_PROMPTS[personality] + BASE_INSTRUCTIONS + ragContext + memoryContext + documentContext;
 
-  // ── 6. Tools ──────────────────────────────────────────────────────────────
-  const activeTools = enabledTools.map(n => TOOL_MAP[n as keyof typeof TOOL_MAP]).filter(Boolean);
-  const tools       = activeTools.length ? activeTools : ALL_TOOLS;
-  tracer.addStep("tool_selection", "tools", enabledTools.join(", "), `${tools.length} tools active`);
+  // ── 6. Load tools via MCP ─────────────────────────────────────────────────
+  tracer.addStep("mcp_tool_load", "mcp", "Loading tools from MCP server");
+  let tools: Awaited<ReturnType<typeof getMCPToolsAsLangChain>>;
+
+  try {
+    // Try to get all tools from MCP server
+    const mcpTools = await getMCPToolsAsLangChain();
+
+    // Filter to only enabled tools
+    tools = enabledTools.length > 0
+      ? mcpTools.filter(t => enabledTools.includes(t.name as never))
+      : mcpTools;
+
+    tracer.addStep("mcp_tool_load_done", "mcp", undefined, `${tools.length} MCP tools active: ${tools.map(t => t.name).join(", ")}`);
+    console.log(`[MCP] Using ${tools.length} tools from MCP server`);
+  } catch (err) {
+    // Fallback to direct LangChain tools if MCP fails
+    console.warn("[MCP] Failed to load MCP tools, falling back to direct tools:", err);
+    tracer.addStep("mcp_fallback", "mcp", undefined, "MCP failed — using direct LangChain tools");
+    const activeTools = enabledTools.map(n => TOOL_MAP[n as keyof typeof TOOL_MAP]).filter(Boolean);
+    tools = activeTools.length ? activeTools : ALL_TOOLS;
+  }
 
   // ── 7. Model ──────────────────────────────────────────────────────────────
   const model = new ChatOpenAI({
@@ -165,7 +176,7 @@ export async function runMarketResearchAgent(req: ChatRequest): Promise<ChatResp
     new HumanMessage(message),
   ];
 
-  // ── 8. Run ────────────────────────────────────────────────────────────────
+  // ── 8. Run with retry ─────────────────────────────────────────────────────
   const { result, retries } = await withRetry(() => graph.invoke({ messages: initMessages }), 3, 1000);
 
   // ── 9. Extract response ───────────────────────────────────────────────────
@@ -179,7 +190,7 @@ export async function runMarketResearchAgent(req: ChatRequest): Promise<ChatResp
       const ai = msg as AIMessage;
       for (const tc of ai.tool_calls || []) {
         toolCalls.push({ name: tc.name, input: tc.args as Record<string, unknown>, status: "success" });
-        tracer.addStep("tool_execution", tc.name, JSON.stringify(tc.args).slice(0, 100), "completed");
+        tracer.addStep("tool_execution", tc.name, JSON.stringify(tc.args).slice(0, 100), "MCP tool executed");
       }
     }
   }
@@ -190,8 +201,7 @@ export async function runMarketResearchAgent(req: ChatRequest): Promise<ChatResp
   const promptTokens     = usage?.input_tokens  || 0;
   const completionTokens = usage?.output_tokens || 0;
   const tokenUsage: TokenUsage = {
-    promptTokens,
-    completionTokens,
+    promptTokens, completionTokens,
     totalTokens:      promptTokens + completionTokens,
     estimatedCostUsd: calcCost(settings.model || "gpt-4o", promptTokens, completionTokens),
   };
@@ -205,40 +215,24 @@ export async function runMarketResearchAgent(req: ChatRequest): Promise<ChatResp
     setCachedResponse(message, enabledTools, settings.model, content, toolCalls, tokenUsage, 30);
   }
 
-  // ── 14. Build observability ───────────────────────────────────────────────
-  const observabilityData = buildObservabilityData(
-    tracer, enabledTools, ragSources.length, ragScores, retries, false, settings.model
-  );
+  // ── 14. Observability ─────────────────────────────────────────────────────
+  const observabilityData = buildObservabilityData(tracer, enabledTools, ragSources.length, ragScores, retries, false, settings.model);
 
-  console.log(`[Agent] Done — ${toolCalls.length} tool calls · ${tokenUsage.totalTokens} tokens · ${observabilityData.agentSteps.length} traced steps`);
+  console.log(`[Agent] Done — ${toolCalls.length} MCP tool calls · ${tokenUsage.totalTokens} tokens · ${observabilityData.agentSteps.length} steps`);
   console.log("=".repeat(60));
 
-  // ── 15. Log to LangSmith (non-blocking) ──────────────────────────────────
   logAgentRun({
-    sessionId,
-    message:          message.slice(0, 80),
-    toolsUsed:        toolCalls.map(t => t.name),
-    tokensUsed:       tokenUsage.totalTokens,
-    durationMs:       Date.now() - startTime,
-    cached:           false,
-    retries,
-    personality:      settings.personality,
-    model:            settings.model,
-    ragChunks:        ragSources.length,
-    ragScores,
+    sessionId, message: message.slice(0, 80),
+    toolsUsed: toolCalls.map(t => t.name),
+    tokensUsed: tokenUsage.totalTokens,
+    durationMs: Date.now() - startTime,
+    cached: false, retries,
+    personality: settings.personality,
+    model: settings.model,
+    ragChunks: ragSources.length, ragScores,
     attachmentsCount: attachments?.length || 0,
-    agentSteps:       tracer.getSteps(),
+    agentSteps: tracer.getSteps(),
   });
 
-  return {
-    content,
-    toolCalls,
-    tokenUsage,
-    durationMs:       Date.now() - startTime,
-    cached:           false,
-    retries,
-    memoryUsed:       memoryContext.length > 0,
-    ragSources,
-    observabilityData,
-  };
+  return { content, toolCalls, tokenUsage, durationMs: Date.now() - startTime, cached: false, retries, memoryUsed: memoryContext.length > 0, ragSources, observabilityData };
 }
