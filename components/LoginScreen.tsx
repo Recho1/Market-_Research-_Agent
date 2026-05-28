@@ -8,7 +8,13 @@ const INDUSTRIES = ["Technology / SaaS","Financial Services","Healthcare","E-Com
 type AuthMode = "login" | "register" | "otp";
 
 function OTPInput({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
-  const refs = Array.from({ length: 6 }, () => useRef<HTMLInputElement>(null));
+  const ref0 = useRef<HTMLInputElement>(null);
+  const ref1 = useRef<HTMLInputElement>(null);
+  const ref2 = useRef<HTMLInputElement>(null);
+  const ref3 = useRef<HTMLInputElement>(null);
+  const ref4 = useRef<HTMLInputElement>(null);
+  const ref5 = useRef<HTMLInputElement>(null);
+  const refs = [ref0, ref1, ref2, ref3, ref4, ref5];
 
   const handleChange = (i: number, v: string) => {
     if (!/^\d?$/.test(v)) return;
@@ -56,7 +62,6 @@ export default function LoginScreen({ onLogin }: { onLogin: (profile: UserProfil
   const [loading,     setLoading]     = useState(false);
   const [otpTimer,    setOtpTimer]    = useState(0);
   const [canResend,   setCanResend]   = useState(false);
-  const [emailSent,   setEmailSent]   = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -107,9 +112,7 @@ export default function LoginScreen({ onLogin }: { onLogin: (profile: UserProfil
       const res  = await fetch("/api/auth/register", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ name, email, password, role, industry }) });
       const data = await res.json();
       if (!res.ok) { setError(data.error || "Registration failed"); return; }
-      setEmailSent(true);
-      setMode("otp");
-      startTimer();
+      setMode("otp"); startTimer();
     } catch { setError("Network error. Please try again."); }
     finally { setLoading(false); }
   };
@@ -141,8 +144,7 @@ export default function LoginScreen({ onLogin }: { onLogin: (profile: UserProfil
       const res  = await fetch("/api/auth/resend-otp", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ email }) });
       const data = await res.json();
       if (!res.ok) { setError(data.error || "Failed to resend"); return; }
-      setOtp(Array(6).fill(""));
-      startTimer();
+      setOtp(Array(6).fill("")); startTimer();
     } catch { setError("Network error."); }
     finally { setLoading(false); }
   };
@@ -164,7 +166,6 @@ export default function LoginScreen({ onLogin }: { onLogin: (profile: UserProfil
           <div className="w-72 h-72 rounded-full bg-[#00ff88]/3 blur-3xl"/>
         </div>
 
-        {/* Logo */}
         <div className="text-center mb-5 relative">
           <div className="w-14 h-14 mx-auto rounded-2xl bg-[#00ff88]/10 border border-[#00ff88]/20 flex items-center justify-center mb-3 signal-glow">
             <span className="text-2xl font-bold text-[#00ff88] signal-glow-text leading-none" style={{fontFamily:"Syne,sans-serif"}}>A</span>
@@ -175,7 +176,6 @@ export default function LoginScreen({ onLogin }: { onLogin: (profile: UserProfil
 
         <div className="bg-[#0d0d14] border border-[#1e1e2e] rounded-2xl p-6 shadow-2xl shadow-black/50 relative">
 
-          {/* ── OTP Screen ── */}
           {mode === "otp" && (
             <div>
               <div className="text-center mb-6">
@@ -187,46 +187,31 @@ export default function LoginScreen({ onLogin }: { onLogin: (profile: UserProfil
                 </div>
                 <h2 className="text-sm font-bold text-[#e8e8f0] mb-1" style={{fontFamily:"Syne,sans-serif"}}>Check your email</h2>
                 <p className="text-[11px] text-[#505070] leading-relaxed">
-                  {emailSent
-                    ? <>We sent a 6-digit code to<br/><span className="text-[#00ff88] font-mono">{email}</span></>
-                    : <>Enter the code sent to<br/><span className="text-[#00ff88] font-mono">{email}</span></>
-                  }
+                  We sent a 6-digit code to<br/>
+                  <span className="text-[#00ff88] font-mono">{email}</span>
                 </p>
               </div>
-
               <OTPInput value={otp} onChange={setOtp}/>
-
               {error && <p className="text-[11px] text-[#ff6b6b] mt-3 text-center">{error}</p>}
-
               <button onClick={handleVerifyOTP} disabled={otp.join("").length < 6 || loading}
                 className="w-full mt-5 py-2.5 rounded-xl bg-[#00ff88]/10 border border-[#00ff88]/25 text-sm font-semibold text-[#00ff88] hover:bg-[#00ff88]/18 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
                 style={{fontFamily:"Syne,sans-serif"}}>
                 {loading ? "Verifying..." : "Verify & Enter ARIA →"}
               </button>
-
               <div className="mt-4 text-center space-y-2">
                 <p className="text-[11px] text-[#505070]">Didn&apos;t receive the code?</p>
-                {canResend ? (
-                  <button onClick={handleResendOTP} disabled={loading}
-                    className="text-[11px] text-[#00ff88] hover:underline disabled:opacity-50 font-mono">
-                    Send a new code
-                  </button>
-                ) : (
-                  <p className="text-[11px] text-[#404060] font-mono">
-                    Resend available in {otpTimer}s
-                  </p>
-                )}
+                {canResend
+                  ? <button onClick={handleResendOTP} disabled={loading} className="text-[11px] text-[#00ff88] hover:underline disabled:opacity-50 font-mono">Send a new code</button>
+                  : <p className="text-[11px] text-[#404060] font-mono">Resend in {otpTimer}s</p>
+                }
                 <div className="pt-1">
                   <button onClick={() => { setMode("register"); setRegStep(2); setOtp(Array(6).fill("")); setError(""); }}
-                    className="text-[11px] text-[#505070] hover:text-[#c8c8d8] transition-colors">
-                    ← Back
-                  </button>
+                    className="text-[11px] text-[#505070] hover:text-[#c8c8d8] transition-colors">← Back</button>
                 </div>
               </div>
             </div>
           )}
 
-          {/* ── Login ── */}
           {mode === "login" && (
             <>
               <h2 className="text-sm font-bold text-[#e8e8f0] mb-1" style={{fontFamily:"Syne,sans-serif"}}>Sign in to ARIA</h2>
@@ -265,7 +250,6 @@ export default function LoginScreen({ onLogin }: { onLogin: (profile: UserProfil
             </>
           )}
 
-          {/* ── Register Step 1 ── */}
           {mode === "register" && regStep === 1 && (
             <>
               <div className="flex items-center gap-2 mb-4">
@@ -304,9 +288,9 @@ export default function LoginScreen({ onLogin }: { onLogin: (profile: UserProfil
                         {[1,2,3,4].map(i=>(
                           <div key={i} className={`flex-1 h-1 rounded-full transition-all ${
                             password.length >= i*3
-                              ? password.length>=12 && /[A-Z]/.test(password) && /[0-9]/.test(password) ? "bg-[#00ff88]"
-                              : password.length>=8 ? "bg-[#ffb700]" : "bg-[#ff6b6b]"
-                              : "bg-[#1e1e2e]"
+                              ? password.length>=12&&/[A-Z]/.test(password)&&/[0-9]/.test(password)?"bg-[#00ff88]"
+                              : password.length>=8?"bg-[#ffb700]":"bg-[#ff6b6b]"
+                              :"bg-[#1e1e2e]"
                           }`}/>
                         ))}
                       </div>
@@ -323,17 +307,16 @@ export default function LoginScreen({ onLogin }: { onLogin: (profile: UserProfil
                     placeholder="Repeat your password"
                     onKeyDown={e=>e.key==="Enter"&&handleRegStep1()}
                     className={`w-full bg-[#111118] border rounded-xl px-4 py-2.5 text-sm text-[#e8e8f0] placeholder-[#303050] outline-none transition-all ${confirmPass&&confirmPass!==password?"border-[#ff6b6b]/40":"border-[#1e1e2e] focus:border-[#00ff88]/30"}`}/>
-                  {confirmPass && confirmPass !== password && <p className="text-[10px] text-[#ff6b6b] mt-1">Passwords do not match</p>}
+                  {confirmPass&&confirmPass!==password&&<p className="text-[10px] text-[#ff6b6b] mt-1">Passwords do not match</p>}
                 </div>
               </div>
-              {error && <p className="text-[11px] text-[#ff6b6b] mt-2">{error}</p>}
+              {error&&<p className="text-[11px] text-[#ff6b6b] mt-2">{error}</p>}
               <button onClick={handleRegStep1} disabled={!name.trim()||!email.trim()||!password||password!==confirmPass}
                 className="w-full mt-4 py-2.5 rounded-xl bg-[#00ff88]/10 border border-[#00ff88]/25 text-sm font-semibold text-[#00ff88] hover:bg-[#00ff88]/18 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
                 style={{fontFamily:"Syne,sans-serif"}}>Continue →</button>
             </>
           )}
 
-          {/* ── Register Step 2 ── */}
           {mode === "register" && regStep === 2 && (
             <>
               <div className="flex items-center gap-2 mb-4">
@@ -368,24 +351,23 @@ export default function LoginScreen({ onLogin }: { onLogin: (profile: UserProfil
                   </div>
                 </div>
               </div>
-              {(role||industry) && (
+              {(role||industry)&&(
                 <div className="flex items-center gap-2 mb-3 flex-wrap">
-                  {role     && <span className="text-[10px] font-mono text-[#00ff88] bg-[#00ff88]/8 border border-[#00ff88]/20 rounded-full px-2 py-0.5">{role}</span>}
-                  {industry && <span className="text-[10px] font-mono text-[#ffb700] bg-[#ffb700]/8 border border-[#ffb700]/20 rounded-full px-2 py-0.5">{industry}</span>}
+                  {role&&<span className="text-[10px] font-mono text-[#00ff88] bg-[#00ff88]/8 border border-[#00ff88]/20 rounded-full px-2 py-0.5">{role}</span>}
+                  {industry&&<span className="text-[10px] font-mono text-[#ffb700] bg-[#ffb700]/8 border border-[#ffb700]/20 rounded-full px-2 py-0.5">{industry}</span>}
                 </div>
               )}
-              {error && <p className="text-[11px] text-[#ff6b6b] mb-2">{error}</p>}
+              {error&&<p className="text-[11px] text-[#ff6b6b] mb-2">{error}</p>}
               <button onClick={handleRegister} disabled={!role||!industry||loading}
                 className="w-full py-2.5 rounded-xl bg-[#00ff88]/10 border border-[#00ff88]/25 text-sm font-semibold text-[#00ff88] hover:bg-[#00ff88]/18 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
                 style={{fontFamily:"Syne,sans-serif"}}>
-                {loading ? "Creating account..." : "Create Account →"}
+                {loading?"Creating account...":"Create Account →"}
               </button>
             </>
           )}
         </div>
-
         <p className="text-center text-[10px] text-[#252535] font-mono mt-3">
-          {mode==="login" ? "Secure login · JWT sessions · Verified accounts" : "Encrypted · OTP via email · No plain text storage"}
+          {mode==="login"?"Secure login · JWT sessions · Verified accounts":"Encrypted · OTP via email · No plain text storage"}
         </p>
       </div>
     </div>

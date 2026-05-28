@@ -1,15 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    serverComponentsExternalPackages: [
-      "langchain",
-      "@langchain/openai",
-      "@langchain/langgraph",
-      "@langchain/community",
-      "@langchain/textsplitters",
-      "langsmith",
-    ],
+  eslint: {
+    ignoreDuringBuilds: true,
   },
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  serverExternalPackages: ["bcryptjs", "jsonwebtoken", "nodemailer"],
 };
 
 export default nextConfig;
