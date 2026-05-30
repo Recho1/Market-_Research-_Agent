@@ -6,7 +6,6 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  serverExternalPackages: ["bcryptjs", "jsonwebtoken", "nodemailer"],
 };
 
 export default nextConfig;
